@@ -8,4 +8,4 @@ Sources for each case are listed [here](https://github.com/globaldothealth/monke
 
 Please check permissions before publishing this data and refer back to each source and the global.health team if you decide to so: _Global.health Monkeypox (accessed on YYYY-MM-DD)._
 
-A data dictionary and machine readable files are available [on GitHub](https://github.com/globaldothealth/monkeypox). Should you identify any inconsistencies in the data or have additional information or questions, please get in touch [here](https://github.com/globaldothealth/monkeypox/issues).
+Global.health maintains a data dictionary and machine readable files [in their own GitHub repository](https://github.com/globaldothealth/monkeypox). Should you identify any inconsistencies in the data or have additional information or questions, please get in touch with them [here](https://github.com/globaldothealth/monkeypox/issues).
