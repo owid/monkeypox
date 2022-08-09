@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 BRANCH="main"
-ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd ../.. && pwd )"
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # FUNCTIONS
 has_changed() {
@@ -19,7 +19,7 @@ git_push() {
 }
 
 # Move to the root directory
-cd $ROOT_DIR
+cd $SCRIPT_DIR
 
 # Activate Python virtualenv
 source venv/bin/activate
@@ -32,5 +32,5 @@ python monkeypox.py
 if has_changed 'owid-monkeypox-data.csv'; then
   git_push "mpx"
 else
-  echo "G.H data is up to date"
+  echo "Global.health data is up to date"
 fi
