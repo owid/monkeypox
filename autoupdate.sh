@@ -25,7 +25,7 @@ cd $SCRIPT_DIR
 source venv/bin/activate
 
 # Make sure we have the latest commit.
-git reset --hard origin/master && git pull
+git reset --hard origin/main && git pull
 
 # Run script
 python monkeypox.py
