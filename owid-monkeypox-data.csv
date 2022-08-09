@@ -1,4 +1,5 @@
 location,date,new_cases,new_cases_smoothed,total_cases,new_cases_per_million,total_cases_per_million,new_cases_smoothed_per_million,new_deaths,new_deaths_smoothed,total_deaths,new_deaths_per_million,total_deaths_per_million,new_deaths_smoothed_per_million
+Andorra,2022-07-25,1.0,,1.0,12.653,12.653,,,,,,,
 Andorra,2022-07-26,2.0,,3.0,25.306,37.958,,,,,,,
 Andorra,2022-07-27,0.0,,3.0,0.0,37.958,,,,,,,
 Andorra,2022-07-28,0.0,,3.0,0.0,37.958,,,,,,,
