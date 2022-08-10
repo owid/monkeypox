@@ -128,7 +128,7 @@ def main():
     )
     df = df[df.date < str(datetime.date.today())].sort_values(["location", "date"])
 
-    df.to_csv(OUTPUT_FILE, index=False)
+    df.to_csv(f"../{OUTPUT_FILE}", index=False)
 
 
 if __name__ == "__main__":
