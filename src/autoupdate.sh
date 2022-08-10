@@ -29,7 +29,8 @@ git reset --hard origin/main && git pull
 
 # Run script
 python monkeypox.py
-if has_changed '../owid-monkeypox-data.csv'; then
+cd ..
+if has_changed 'owid-monkeypox-data.csv'; then
   git_push "mpx"
 else
   echo "Global.health data is up to date"
