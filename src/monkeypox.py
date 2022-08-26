@@ -8,7 +8,7 @@ SOURCE_MONKEYPOX = (
 )
 SOURCE_COUNTRY_MAPPING = "country_mapping.csv"
 SOURCE_POPULATION = "https://github.com/owid/covid-19-data/raw/master/scripts/input/un/population_latest.csv"
-SOURCE_ISO = ('iso.csv')
+SOURCE_ISO = "https://raw.githubusercontent.com/owid/covid-19-data/master/scripts/input/iso/iso.csv"
 OUTPUT_FILE = "owid-monkeypox-data.csv"
 
 
