@@ -8,6 +8,7 @@ SOURCE_MONKEYPOX = (
 )
 SOURCE_COUNTRY_MAPPING = "country_mapping.csv"
 SOURCE_POPULATION = "https://github.com/owid/covid-19-data/raw/master/scripts/input/un/population_latest.csv"
+SOURCE_ISO = "https://raw.githubusercontent.com/owid/covid-19-data/master/scripts/input/iso/iso.csv"
 OUTPUT_FILE = "owid-monkeypox-data.csv"
 
 
@@ -127,6 +128,13 @@ def main():
         dataframes,
     )
     df = df[df.date < str(datetime.date.today())].sort_values(["location", "date"])
+
+    # ISO codes
+    iso_codes = pd.read_csv(SOURCE_ISO, usecols=["location", "iso_code"])
+    missing_iso_codes = set(df.location) - set(iso_codes.location)
+    if len(missing_iso_codes) > 0:
+        raise Exception(f"Missing locations in ISO file: {missing_iso_codes}")
+    df = iso_codes.merge(df, on="location")
 
     df.to_csv(f"../{OUTPUT_FILE}", index=False)
 
