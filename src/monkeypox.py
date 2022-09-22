@@ -28,7 +28,7 @@ def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def clean_date(df: pd.DataFrame) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df.date).dt.date.astype(str)
-    return df[(df.date >= "2022-05-01") & (df.date < str(datetime.date.today()))]
+    return df
 
 
 def clean_values(df: pd.DataFrame) -> pd.DataFrame:
@@ -128,6 +128,10 @@ def derive_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return df.groupby("iso_code").apply(derive_country_metrics)
 
 
+def filter_dates(df: pd.DataFrame) -> pd.DataFrame:
+    return df[(df.date >= "2022-05-01") & (df.date < str(datetime.date.today()))]
+
+
 def main():
     (
         import_data(SOURCE_MONKEYPOX)
@@ -138,6 +142,7 @@ def main():
         .pipe(add_world)
         .pipe(add_population_and_countries)
         .pipe(derive_metrics)
+        .pipe(filter_dates)
         .sort_values(["location", "date"])
     ).to_csv(f"../{OUTPUT_FILE}", index=False)
 
