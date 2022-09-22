@@ -1,142 +1,145 @@
 import datetime
-from functools import reduce
+import requests
 
 import pandas as pd
 
-SOURCE_MONKEYPOX = (
-    "https://raw.githubusercontent.com/globaldothealth/monkeypox/main/latest.csv"
-)
+SOURCE_MONKEYPOX = "https://extranet.who.int/publicemergency/api/Monkeypox/"
 SOURCE_COUNTRY_MAPPING = "country_mapping.csv"
 SOURCE_POPULATION = "https://github.com/owid/covid-19-data/raw/master/scripts/input/un/population_latest.csv"
-SOURCE_ISO = "https://raw.githubusercontent.com/owid/covid-19-data/master/scripts/input/iso/iso.csv"
 OUTPUT_FILE = "owid-monkeypox-data.csv"
 
 
-def aggregate(df, pop, date_type, metric_name):
-    assert date_type in ["confirmation", "death"]
-    assert metric_name in ["cases", "deaths"]
-
-    df = df.rename(columns={f"Date_{date_type}": "date"})
-    df = df.loc[-df.date.isnull(), ["location", "date"]]
-    df = df[df.date.str.match("\d{4}-\d{2}-\d{2}")]
-
-    world = df.groupby(["date"], as_index=False).size().assign(location="World")
-    df = df.groupby(["location", "date"], as_index=False).size()
-    df = pd.concat([df, world]).rename(columns={"size": "n"})
-
-    # Fill missing dates with 0 for all countries
-    def get_loc_range(loc, df):
-        dates = df.loc[df.location == loc, "date"]
-        return pd.DataFrame(
-            {
-                "date": pd.date_range(
-                    start=dates.min(), end=dates.max(), freq="D"
-                ).astype(str),
-                "location": loc,
-            }
-        )
-
-    df_range = pd.concat([get_loc_range(loc, df) for loc in df.location.unique()])
-    df = (
-        pd.merge(
-            df, df_range, on=["location", "date"], how="outer", validate="one_to_one"
-        )
-        .fillna(0)
-        .sort_values(["location", "date"])
-        .reset_index(drop=True)
-    )
-
-    # Add 7-day average
-    df["rolling_avg"] = (
-        df.groupby("location")["n"]
-        .rolling(window=7, min_periods=7, center=False)
-        .mean()
-        .round(2)
-        .reset_index(drop=True)
-    )
-
-    # Add cumulative version
-    df["cumulative"] = df.groupby("location")["n"].cumsum()
-
-    # Add per-capita metrics
-    df = pd.merge(df, pop, how="left", validate="many_to_one", on="location")
-    df = df.assign(
-        n_pm=round(df.n * 1000000 / df.population, 3),
-        cumulative_pm=round(df.cumulative * 1000000 / df.population, 3),
-        rolling_avg_pm=round(df.rolling_avg * 1000000 / df.population, 3),
-    ).drop(columns="population")
-
-    df = df.rename(
-        columns={
-            "n": f"new_{metric_name}",
-            "rolling_avg": f"new_{metric_name}_smoothed",
-            "cumulative": f"total_{metric_name}",
-            "n_pm": f"new_{metric_name}_per_million",
-            "rolling_avg_pm": f"new_{metric_name}_smoothed_per_million",
-            "cumulative_pm": f"total_{metric_name}_per_million",
-        }
-    )
-
+def import_data(url: str) -> pd.DataFrame:
+    data = requests.post(url).json()
+    df = pd.DataFrame.from_records(data["Data"])
     return df
 
 
-def main():
+def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
+    return df[["ISO3", "DATEREP", "TOTAL_CONFCASES", "TOTAL_ConfDeaths"]].rename(
+        columns={
+            "ISO3": "iso_code",
+            "DATEREP": "date",
+            "TOTAL_CONFCASES": "total_cases",
+            "TOTAL_ConfDeaths": "total_deaths",
+        }
+    )
 
-    # Import all data from GitHub
-    # The GitHub repo is updated after quality checks have run on the Google sheet
-    # so sometimes data is delayed by a day (usually few hours) while the issues are fixed.
-    # G.H recommends using the GitHub repo as that has passed QC checks.
-    df = pd.read_csv(SOURCE_MONKEYPOX, low_memory=False)
-    df = df.loc[
-        (df.Date_confirmation >= "2022-05-06")
-        & (df.Status == "confirmed")
-        & (-df.Country.isnull()),
-        ["Country", "Date_confirmation", "Date_death"],
-    ].rename(columns={"Country": "location"})
 
-    # Entity cleaning
-    country_mapping = pd.read_csv(SOURCE_COUNTRY_MAPPING)
+def clean_date(df: pd.DataFrame) -> pd.DataFrame:
+    df["date"] = pd.to_datetime(df.date).dt.date.astype(str)
+    return df[(df.date >= "2022-05-01") & (df.date < str(datetime.date.today()))]
+
+
+def clean_values(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.sort_values("date", ascending=False)
+    df["total_cases"] = df[["iso_code", "total_cases"]].groupby("iso_code").cummin()
+    df["total_deaths"] = df[["iso_code", "total_deaths"]].groupby("iso_code").cummin()
+    return df.sort_values(["iso_code", "date"])
+
+
+def explode_dates(df: pd.DataFrame) -> pd.DataFrame:
+    df_range = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "iso_code": iso_code,
+                    "date": pd.date_range(
+                        start=df.date.min(), end=df.date.max(), freq="D"
+                    ).astype(str),
+                }
+            )
+            for iso_code in df.iso_code.unique()
+        ]
+    )
     df = pd.merge(
-        df, country_mapping, on="location", how="left", validate="many_to_one"
+        df, df_range, on=["iso_code", "date"], validate="one_to_one", how="right"
     )
-    missing_locations = set(df.location) - set(country_mapping.location)
-    if len(missing_locations) > 0:
-        raise Exception(
-            f"Missing locations in country mapping file: {missing_locations}"
+    df["report"] = df.total_cases.notnull() | df.total_deaths.notnull()
+    return df
+
+
+def add_world(df: pd.DataFrame) -> pd.DataFrame:
+    df[["total_cases", "total_deaths"]] = (
+        df[["iso_code", "total_cases", "total_deaths"]]
+        .groupby("iso_code")
+        .ffill()
+        .fillna(0)
+    )
+    world = (
+        df[["date", "total_cases", "total_deaths"]]
+        .groupby("date", as_index=False)
+        .sum()
+        .assign(iso_code="OWID_WRL", report=True)
+    )
+    return pd.concat([df, world])
+
+
+def add_population_and_countries(df: pd.DataFrame) -> pd.DataFrame:
+    pop = pd.read_csv(
+        SOURCE_POPULATION, usecols=["entity", "population", "iso_code"]
+    ).rename(columns={"entity": "location", "iso_code": "iso_code"})
+    missing_iso = set(df.iso_code) - set(pop.iso_code)
+    if len(missing_iso) > 0:
+        raise Exception(f"Missing ISO in population file: {missing_iso}")
+    df = pd.merge(pop, df, how="right", validate="one_to_many", on="iso_code")
+    return df
+
+
+def derive_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    def derive_country_metrics(df: pd.DataFrame) -> pd.DataFrame:
+
+        # Add daily values
+        df["new_cases"] = df.total_cases.diff()
+        df["new_deaths"] = df.total_deaths.diff()
+
+        # Add 7-day averages
+        df["new_cases_smoothed"] = (
+            df.new_cases.rolling(window=7, min_periods=7, center=False).mean().round(2)
         )
-    df = df.drop(columns="location").rename(columns={"new": "location"})[
-        ["location", "Date_confirmation", "Date_death"]
-    ]
+        df["new_deaths_smoothed"] = (
+            df.new_deaths.rolling(window=7, min_periods=7, center=False).mean().round(2)
+        )
 
-    # Population data
-    pop = pd.read_csv(SOURCE_POPULATION, usecols=["entity", "population"]).rename(
-        columns={"entity": "location"}
-    )
-    missing_locations = set(df.location) - set(pop.location)
-    if len(missing_locations) > 0:
-        raise Exception(f"Missing locations in population file: {missing_locations}")
+        # Add per-capita metrics
+        df = df.assign(
+            new_cases_per_million=round(df.new_cases * 1000000 / df.population, 3),
+            total_cases_per_million=round(df.total_cases * 1000000 / df.population, 3),
+            new_cases_smoothed_per_million=round(
+                df.new_cases_smoothed * 1000000 / df.population, 3
+            ),
+            new_deaths_per_million=round(df.new_deaths * 1000000 / df.population, 3),
+            total_deaths_per_million=round(
+                df.total_deaths * 1000000 / df.population, 3
+            ),
+            new_deaths_smoothed_per_million=round(
+                df.new_deaths_smoothed * 1000000 / df.population, 3
+            ),
+        ).drop(columns="population")
 
-    dataframes = [
-        aggregate(df, pop, date_type="confirmation", metric_name="cases"),
-        aggregate(df, pop, date_type="death", metric_name="deaths"),
-    ]
+        min_reporting_date = df[df.report].date.min()
+        max_reporting_date = df[df.report].date.max()
+        df = df[(df.date >= min_reporting_date) & (df.date <= max_reporting_date)].drop(
+            columns="report"
+        )
 
-    df = reduce(
-        lambda df1, df2: pd.merge(
-            df1, df2, on=["location", "date"], how="outer", validate="one_to_one"
-        ),
-        dataframes,
-    )
-    df = df[df.date < str(datetime.date.today())].sort_values(["location", "date"])
+        return df
 
-    # ISO codes
-    iso_codes = pd.read_csv(SOURCE_ISO, usecols=["location", "iso_code"])
-    missing_iso_codes = set(df.location) - set(iso_codes.location)
-    if len(missing_iso_codes) > 0:
-        raise Exception(f"Missing locations in ISO file: {missing_iso_codes}")
-    df = iso_codes.merge(df, on="location")
+    return df.groupby("iso_code").apply(derive_country_metrics)
 
-    df.to_csv(f"../{OUTPUT_FILE}", index=False)
+
+def main():
+    (
+        import_data(SOURCE_MONKEYPOX)
+        .pipe(clean_columns)
+        .pipe(clean_date)
+        .pipe(clean_values)
+        .pipe(explode_dates)
+        .pipe(add_world)
+        .pipe(add_population_and_countries)
+        .pipe(derive_metrics)
+        .sort_values(["location", "date"])
+    ).to_csv(f"../{OUTPUT_FILE}", index=False)
 
 
 if __name__ == "__main__":
