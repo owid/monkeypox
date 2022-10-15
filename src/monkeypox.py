@@ -72,6 +72,7 @@ def add_world(df: pd.DataFrame) -> pd.DataFrame:
         .sum()
         .assign(iso_code="OWID_WRL", report=True)
     )
+    world = world[world.date < str(datetime.date.today())]
     return pd.concat([df, world])
 
 
@@ -129,7 +130,7 @@ def derive_metrics(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def filter_dates(df: pd.DataFrame) -> pd.DataFrame:
-    return df[(df.date >= "2022-05-01") & (df.date < str(datetime.date.today()))]
+    return df[df.date >= "2022-05-01"]
 
 
 def main():
