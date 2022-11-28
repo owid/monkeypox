@@ -1,27 +1,29 @@
 import datetime
-import requests
 
 import pandas as pd
+import requests
 
-SOURCE_MONKEYPOX = "https://extranet.who.int/publicemergency/api/Monkeypox/"
+SOURCE_MONKEYPOX = (
+    "https://frontdoor-l4uikgap6gz3m.azurefd.net/MPX/V_MPX_VALIDATED_DAILY"
+)
 SOURCE_COUNTRY_MAPPING = "country_mapping.csv"
 SOURCE_POPULATION = "https://github.com/owid/covid-19-data/raw/master/scripts/input/un/population_latest.csv"
 OUTPUT_FILE = "owid-monkeypox-data.csv"
 
 
 def import_data(url: str) -> pd.DataFrame:
-    data = requests.post(url).json()
-    df = pd.DataFrame.from_records(data["Data"])
+    data = requests.get(url).json()
+    df = pd.DataFrame.from_records(data["value"])
     return df
 
 
 def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
-    return df[["ISO3", "DATEREP", "TOTAL_CONFCASES", "TOTAL_ConfDeaths"]].rename(
+    return df[["ISO3", "DATE", "TOTAL_CONF_CASES", "TOTAL_CONF_DEATHS"]].rename(
         columns={
             "ISO3": "iso_code",
-            "DATEREP": "date",
-            "TOTAL_CONFCASES": "total_cases",
-            "TOTAL_ConfDeaths": "total_deaths",
+            "DATE": "date",
+            "TOTAL_CONF_CASES": "total_cases",
+            "TOTAL_CONF_DEATHS": "total_deaths",
         }
     )
 
