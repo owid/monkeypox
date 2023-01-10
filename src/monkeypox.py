@@ -1,7 +1,6 @@
 import datetime
 
 import pandas as pd
-import requests
 
 SOURCE_MONKEYPOX = (
     "https://frontdoor-l4uikgap6gz3m.azurefd.net/MPX/V_MPX_VALIDATED_DAILY?&$format=csv"
