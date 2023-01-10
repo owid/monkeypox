@@ -1,10 +1,9 @@
 import datetime
 
 import pandas as pd
-import requests
 
 SOURCE_MONKEYPOX = (
-    "https://frontdoor-l4uikgap6gz3m.azurefd.net/MPX/V_MPX_VALIDATED_DAILY"
+    "https://frontdoor-l4uikgap6gz3m.azurefd.net/MPX/V_MPX_VALIDATED_DAILY?&$format=csv"
 )
 SOURCE_COUNTRY_MAPPING = "country_mapping.csv"
 SOURCE_POPULATION = "https://github.com/owid/covid-19-data/raw/master/scripts/input/un/population_latest.csv"
@@ -12,8 +11,7 @@ OUTPUT_FILE = "owid-monkeypox-data.csv"
 
 
 def import_data(url: str) -> pd.DataFrame:
-    data = requests.get(url).json()
-    df = pd.DataFrame.from_records(data["value"])
+    df = pd.read_csv(url)
     return df
 
 
