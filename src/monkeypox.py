@@ -137,7 +137,6 @@ def main():
     (
         import_data(SOURCE_MONKEYPOX)
         .pipe(clean_columns)
-        .sort_values("date")
         .pipe(clean_date)
         .pipe(clean_values)
         .pipe(explode_dates)
