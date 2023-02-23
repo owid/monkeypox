@@ -33,5 +33,5 @@ cd ..
 if has_changed 'owid-monkeypox-data.csv'; then
   git_push "mpx"
 else
-  echo "Global.health data is up to date"
+  echo "Data is up to date"
 fi
