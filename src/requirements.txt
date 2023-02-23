@@ -1,2 +1,2 @@
-pandas==1.1.5
+git+https://github.com/owid/owid-datautils-py
 requests==2.27.1
