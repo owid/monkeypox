@@ -87,6 +87,37 @@ def add_world(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([df, world])
 
 
+def add_regions(df: pd.DataFrame) -> pd.DataFrame:
+
+    # Add region for each country
+    for region in [
+        "North America",
+        "South America",
+        "Europe",
+        "Asia",
+        "Africa",
+        "Oceania",
+    ]:
+        df.loc[
+            df.location.isin(geo.list_countries_in_region(region=region)), "region"
+        ] = region
+
+    # Calculate regional aggregates
+    regions = (
+        df[df.region.notnull()][
+            ["region", "date", "total_cases", "total_deaths", "report"]
+        ]
+        .groupby(["region", "date"], as_index=False)
+        .agg({"total_cases": "sum", "total_deaths": "sum", "report": "max"})
+        .rename(columns={"region": "location"})
+    )
+    regions = regions[regions.date < str(datetime.date.today())]
+    df = df.drop(columns="region")
+
+    # Concatenate with df
+    return pd.concat([df, regions])
+
+
 def add_population_and_countries(df: pd.DataFrame) -> pd.DataFrame:
     pop = pd.read_csv(
         SOURCE_POPULATION, usecols=["entity", "population", "iso_code"]
@@ -153,6 +184,7 @@ def main():
         .pipe(clean_values)
         .pipe(explode_dates)
         .pipe(add_world)
+        .pipe(add_regions)
         .pipe(add_population_and_countries)
         .pipe(derive_metrics)
         .pipe(filter_dates)
