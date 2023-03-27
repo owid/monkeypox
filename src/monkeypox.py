@@ -1,8 +1,12 @@
 import datetime
 
 import pandas as pd
+from owid.datautils import geo
 
-SOURCE_COUNTRY_MAPPING = "country_mapping.csv"
+SOURCE_MONKEYPOX = (
+    "https://frontdoor-l4uikgap6gz3m.azurefd.net/MPX/V_MPX_VALIDATED_DAILY?&$format=csv"
+)
+SOURCE_COUNTRY_MAPPING = "country_mapping.json"
 SOURCE_POPULATION = "https://github.com/owid/covid-19-data/raw/master/scripts/input/un/population_latest.csv"
 OUTPUT_FILE = "owid-monkeypox-data.csv"
 WHO_REGIONS = ["EURO", "AMRO", "WPRO", "EMRO", "AFRO", "SEARO"]
@@ -19,13 +23,22 @@ def import_data() -> pd.DataFrame:
 
 
 def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
-    return df[["ISO3", "DATE", "TOTAL_CONF_CASES", "TOTAL_CONF_DEATHS"]].rename(
+    return df[["COUNTRY", "DATE", "TOTAL_CONF_CASES", "TOTAL_CONF_DEATHS"]].rename(
         columns={
-            "ISO3": "iso_code",
+            "COUNTRY": "location",
             "DATE": "date",
             "TOTAL_CONF_CASES": "total_cases",
             "TOTAL_CONF_DEATHS": "total_deaths",
         }
+    )
+
+
+def harmonize_countries(df: pd.DataFrame) -> pd.DataFrame:
+    return geo.harmonize_countries(
+        df,
+        countries_file=SOURCE_COUNTRY_MAPPING,
+        country_col="location",
+        warn_on_missing_countries=False,
     )
 
 
@@ -36,9 +49,9 @@ def clean_date(df: pd.DataFrame) -> pd.DataFrame:
 
 def clean_values(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values("date", ascending=False)
-    df["total_cases"] = df[["iso_code", "total_cases"]].groupby("iso_code").cummin()
-    df["total_deaths"] = df[["iso_code", "total_deaths"]].groupby("iso_code").cummin()
-    return df.sort_values(["iso_code", "date"])
+    df["total_cases"] = df[["location", "total_cases"]].groupby("location").cummin()
+    df["total_deaths"] = df[["location", "total_deaths"]].groupby("location").cummin()
+    return df.sort_values(["location", "date"])
 
 
 def explode_dates(df: pd.DataFrame) -> pd.DataFrame:
@@ -46,17 +59,17 @@ def explode_dates(df: pd.DataFrame) -> pd.DataFrame:
         [
             pd.DataFrame(
                 {
-                    "iso_code": iso_code,
+                    "location": location,
                     "date": pd.date_range(
                         start=df.date.min(), end=df.date.max(), freq="D"
                     ).astype(str),
                 }
             )
-            for iso_code in df.iso_code.unique()
+            for location in df.location.unique()
         ]
     )
     df = pd.merge(
-        df, df_range, on=["iso_code", "date"], validate="one_to_one", how="right"
+        df, df_range, on=["location", "date"], validate="one_to_one", how="right"
     )
     df["report"] = df.total_cases.notnull() | df.total_deaths.notnull()
     return df
@@ -64,8 +77,8 @@ def explode_dates(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_world(df: pd.DataFrame) -> pd.DataFrame:
     df[["total_cases", "total_deaths"]] = (
-        df[["iso_code", "total_cases", "total_deaths"]]
-        .groupby("iso_code")
+        df[["location", "total_cases", "total_deaths"]]
+        .groupby("location")
         .ffill()
         .fillna(0)
     )
@@ -73,20 +86,51 @@ def add_world(df: pd.DataFrame) -> pd.DataFrame:
         df[["date", "total_cases", "total_deaths"]]
         .groupby("date", as_index=False)
         .sum()
-        .assign(iso_code="OWID_WRL", report=True)
+        .assign(location="World", report=True)
     )
     world = world[world.date < str(datetime.date.today())]
     return pd.concat([df, world])
 
 
+def add_regions(df: pd.DataFrame) -> pd.DataFrame:
+
+    # Add region for each country
+    for region in [
+        "North America",
+        "South America",
+        "Europe",
+        "Asia",
+        "Africa",
+        "Oceania",
+    ]:
+        df.loc[
+            df.location.isin(geo.list_countries_in_region(region=region)), "region"
+        ] = region
+
+    # Calculate regional aggregates
+    regions = (
+        df[df.region.notnull()][
+            ["region", "date", "total_cases", "total_deaths", "report"]
+        ]
+        .groupby(["region", "date"], as_index=False)
+        .agg({"total_cases": "sum", "total_deaths": "sum", "report": "max"})
+        .rename(columns={"region": "location"})
+    )
+    regions = regions[regions.date < str(datetime.date.today())]
+    df = df.drop(columns="region")
+
+    # Concatenate with df
+    return pd.concat([df, regions])
+
+
 def add_population_and_countries(df: pd.DataFrame) -> pd.DataFrame:
     pop = pd.read_csv(
         SOURCE_POPULATION, usecols=["entity", "population", "iso_code"]
-    ).rename(columns={"entity": "location", "iso_code": "iso_code"})
-    missing_iso = set(df.iso_code) - set(pop.iso_code)
-    if len(missing_iso) > 0:
-        raise Exception(f"Missing ISO in population file: {missing_iso}")
-    df = pd.merge(pop, df, how="right", validate="one_to_many", on="iso_code")
+    ).rename(columns={"entity": "location"})
+    missing_locs = set(df.location) - set(pop.location)
+    if len(missing_locs) > 0:
+        raise Exception(f"Missing location(s) in population file: {missing_locs}")
+    df = pd.merge(pop, df, how="right", validate="one_to_many", on="location")
     return df
 
 
@@ -140,10 +184,12 @@ def main():
     (
         import_data()
         .pipe(clean_columns)
+        .pipe(harmonize_countries)
         .pipe(clean_date)
         .pipe(clean_values)
         .pipe(explode_dates)
         .pipe(add_world)
+        .pipe(add_regions)
         .pipe(add_population_and_countries)
         .pipe(derive_metrics)
         .pipe(filter_dates)
