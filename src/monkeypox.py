@@ -156,12 +156,12 @@ def derive_metrics(df: pd.DataFrame) -> pd.DataFrame:
             new_cases_smoothed_per_million=round(
                 df.new_cases_smoothed * 1000000 / df.population, 3
             ),
-            new_deaths_per_million=round(df.new_deaths * 1000000 / df.population, 3),
+            new_deaths_per_million=round(df.new_deaths * 1000000 / df.population, 5),
             total_deaths_per_million=round(
-                df.total_deaths * 1000000 / df.population, 3
+                df.total_deaths * 1000000 / df.population, 5
             ),
             new_deaths_smoothed_per_million=round(
-                df.new_deaths_smoothed * 1000000 / df.population, 3
+                df.new_deaths_smoothed * 1000000 / df.population, 5
             ),
         ).drop(columns="population")
 
