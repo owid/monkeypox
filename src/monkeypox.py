@@ -1,7 +1,7 @@
 import datetime
 
 import pandas as pd
-from owid.datautils import geo
+from etl.data_helpers import geo
 
 SOURCE_MONKEYPOX = (
     "https://frontdoor-l4uikgap6gz3m.azurefd.net/MPX/V_MPX_VALIDATED_DAILY?&$format=csv"
