@@ -1,7 +1,8 @@
 import datetime
 
 import pandas as pd
-from etl.data_helpers import geo
+
+from shared import harmonize_countries, list_countries_in_region
 
 SOURCE_MONKEYPOX = (
     "https://frontdoor-l4uikgap6gz3m.azurefd.net/MPX/V_MPX_VALIDATED_DAILY?&$format=csv"
@@ -33,8 +34,8 @@ def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def harmonize_countries(df: pd.DataFrame) -> pd.DataFrame:
-    return geo.harmonize_countries(
+def mpox_harmonize_countries(df: pd.DataFrame) -> pd.DataFrame:
+    return harmonize_countries(
         df,
         countries_file=SOURCE_COUNTRY_MAPPING,
         country_col="location",
@@ -93,7 +94,6 @@ def add_world(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_regions(df: pd.DataFrame) -> pd.DataFrame:
-
     # Add region for each country
     for region in [
         "North America",
@@ -104,7 +104,7 @@ def add_regions(df: pd.DataFrame) -> pd.DataFrame:
         "Oceania",
     ]:
         df.loc[
-            df.location.isin(geo.list_countries_in_region(region=region)), "region"
+            df.location.isin(list_countries_in_region(region=region)), "region"
         ] = region
 
     # Calculate regional aggregates
@@ -136,7 +136,6 @@ def add_population_and_countries(df: pd.DataFrame) -> pd.DataFrame:
 
 def derive_metrics(df: pd.DataFrame) -> pd.DataFrame:
     def derive_country_metrics(df: pd.DataFrame) -> pd.DataFrame:
-
         # Add daily values
         df["new_cases"] = df.total_cases.diff()
         df["new_deaths"] = df.total_deaths.diff()
@@ -184,7 +183,7 @@ def main():
     (
         import_data()
         .pipe(clean_columns)
-        .pipe(harmonize_countries)
+        .pipe(mpox_harmonize_countries)
         .pipe(clean_date)
         .pipe(clean_values)
         .pipe(explode_dates)

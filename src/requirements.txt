@@ -1,5 +1,8 @@
-git+https://github.com/owid/etl
+git+https://github.com/owid/owid-catalog-py
+git+https://github.com/owid/owid-datautils-py
 datetime
 pandas
+pathlib
+typing
 
 
