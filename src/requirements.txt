@@ -1,2 +1,8 @@
+git+https://github.com/owid/owid-catalog-py
 git+https://github.com/owid/owid-datautils-py
-requests==2.27.1
+datetime
+pandas
+pathlib
+typing
+
+
