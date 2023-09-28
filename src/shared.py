@@ -10,7 +10,7 @@ from owid.datautils.io.json import load_json
 
 
 def _load_countries_regions() -> pd.DataFrame:
-    countries_regions = catalog.find("regions").load()
+    countries_regions = catalog.find("regions", namespace="regions").load()
     return cast(pd.DataFrame, countries_regions)
 
 
@@ -87,10 +87,12 @@ def harmonize_countries(
     warn_on_unknown_excluded_countries: bool = True,
     show_full_warning: bool = True,
 ) -> pd.DataFrame:
-    """Harmonize country names in dataframe, following the mapping given in a file.
+    """Harmonize country names in dataframe, following the mapping given in a
+    file.
 
-    Countries in dataframe that are not in mapping will left unchanged (or converted to nan, if
-    make_missing_countries_nan is True). If excluded_countries_file is given, countries in that list will be removed
+    Countries in dataframe that are not in mapping will left unchanged (or
+    converted to nan, if make_missing_countries_nan is True). If
+    excluded_countries_file is given, countries in that list will be removed
     from the output data.
 
     Parameters
