@@ -15,7 +15,9 @@ def _load_countries_regions() -> pd.DataFrame:
 
 
 def _load_income_groups() -> pd.DataFrame:
-    income_groups = catalog.find(table="income_groups_latest").load()
+    income_groups = catalog.find(
+        table="income_groups_latest", namespace="wb", version="2024-03-11"
+    ).load()
     return cast(pd.DataFrame, income_groups)
 
 
