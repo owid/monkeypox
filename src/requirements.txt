@@ -1,7 +1,7 @@
 git+https://github.com/owid/owid-catalog-py
 git+https://github.com/owid/owid-datautils-py
 datetime
-pandas
+pandas==1.5.3
 pathlib
 typing
 
