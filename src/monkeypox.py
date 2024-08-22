@@ -103,9 +103,9 @@ def add_regions(df: pd.DataFrame) -> pd.DataFrame:
         "Africa",
         "Oceania",
     ]:
-        df.loc[
-            df.location.isin(list_countries_in_region(region=region)), "region"
-        ] = region
+        df.loc[df.location.isin(list_countries_in_region(region=region)), "region"] = (
+            region
+        )
 
     # Calculate regional aggregates
     regions = (
