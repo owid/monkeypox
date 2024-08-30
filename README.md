@@ -1,14 +1,12 @@
-# Mpox (Monkeypox) Data
+# Mpox data
 
-This dataset no longer powers our [mpox explorer](https://ourworldindata.org/explorers/monkeypox). The data pipeline for this has now been moved to our [ETL](https://github.com/owid/etl), and the resulting data file can be found [here](https://catalog.ourworldindata.org/explorers/who/latest/monkeypox/monkeypox.csv).
+⚠️ This dataset no longer powers our [Mpox Data Explorer](https://ourworldindata.org/explorers/monkeypox). The data pipeline has now been moved to our [ETL system](https://github.com/owid/etl), and the resulting data file can be found [here (CSV file)](https://catalog.ourworldindata.org/explorers/who/latest/monkeypox/monkeypox.csv).
 
-As of August 2024, we are using data produced by the World Health Organization for _confirmed_ cases and deaths and data from the African CDC for _suspected_ cases. 
-
-We are closely monitoring the ongoing mpox situation in Central Africa. Any changes to our data sources will be documented here. 
+As of August 2024, we are using data produced by the World Health Organization for _confirmed_ cases and deaths and data from the African CDC for _suspected_ cases. We are closely monitoring the ongoing mpox situation in Central Africa. Any changes to our data sources will be documented here. 
 
 ----
 
-###  2024-08-29 - Analyzing the data produced by the World Health Organization on the 2022 mpox outbreak
+### 2024-08-29 - Analyzing the data produced by the World Health Organization on the 2022 mpox outbreak
 
 Data on the 2022 mpox outbreak is collated by the [World Health Organization](https://extranet.who.int/publicemergency/), and is updated as new information is reported.
 
